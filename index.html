@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeGrid — Institute Edition</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">Time<span>Grid</span> <span style="font-size:0.8rem;font-weight:400;color:#93c5fd;margin-left:6px;">Institute Edition</span></div>
+  <div class="nav-steps">
+    <div class="nav-step active" id="ns1">① Timing Setup</div>
+    <div class="nav-step" id="ns2">② Departments</div>
+    <div class="nav-step" id="ns3">③ Preview &amp; Download</div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- PAGE 1: Global Timing Setup -->
+  <div class="page active" id="page1">
+    <div class="page-header">
+      <h2>Lecture &amp; Practical Timing</h2>
+      <p>Set separate start/end times and durations for lectures and practicals. These apply globally to all departments.</p>
+    </div>
+
+    <div class="form-grid">
+      <!-- Lecture Timing -->
+      <div class="card">
+        <div class="card-title">📖 Lecture Schedule</div>
+        <div class="row2">
+          <div><label>Day Start</label><input type="time" id="lec_startTime" value="09:20"></div>
+          <div><label>Day End</label><input type="time" id="lec_endTime" value="17:20"></div>
+        </div>
+        <label>Lecture Duration (minutes)</label>
+        <select id="lec_periodDur">
+          <option value="30">30 min</option><option value="40">40 min</option>
+          <option value="45">45 min</option><option value="50" selected>50 min</option>
+          <option value="55">55 min</option><option value="60">60 min</option>
+          <option value="75">75 min</option><option value="90">90 min</option>
+        </select>
+        <label style="margin-top:1rem;">Lecture Breaks / Intervals</label>
+        <table class="data-table">
+          <thead><tr><th>Break Name</th><th>Start Time</th><th>Duration (min)</th><th>Color</th><th></th></tr></thead>
+          <tbody id="lec_breaksTbody"></tbody>
+        </table>
+        <button class="add-btn" onclick="addBreak('lec')">+ Add Lecture Break</button>
+      </div>
+
+      <!-- Practical Timing -->
+      <div class="card">
+        <div class="card-title">🔬 Practical Schedule</div>
+        <div class="row2">
+          <div><label>Practical Start</label><input type="time" id="prac_startTime" value="10:00"></div>
+          <div><label>Practical End</label><input type="time" id="prac_endTime" value="13:00"></div>
+        </div>
+        <label>Practical Slot Duration (minutes)</label>
+        <select id="prac_periodDur">
+          <option value="60">60 min</option>
+          <option value="90">90 min</option>
+          <option value="100" selected>100 min (double period)</option>
+          <option value="120">120 min</option>
+          <option value="150">150 min</option>
+          <option value="180">3 hours</option>
+        </select>
+        <label style="margin-top:1rem;">Practical Breaks / Intervals</label>
+        <table class="data-table">
+          <thead><tr><th>Break Name</th><th>Start Time</th><th>Duration (min)</th><th>Color</th><th></th></tr></thead>
+          <tbody id="prac_breaksTbody"></tbody>
+        </table>
+        <button class="add-btn" onclick="addBreak('prac')">+ Add Practical Break</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1.5rem;">
+      <div class="card-title">📅 Working Days</div>
+      <p style="font-size:0.8rem;color:var(--muted);margin-bottom:0.8rem;">Select days that apply globally to all departments.</p>
+      <div class="days-row">
+        <div class="day-pill on" data-d="Monday">Mon</div>
+        <div class="day-pill on" data-d="Tuesday">Tue</div>
+        <div class="day-pill on" data-d="Wednesday">Wed</div>
+        <div class="day-pill on" data-d="Thursday">Thu</div>
+        <div class="day-pill on" data-d="Friday">Fri</div>
+        <div class="day-pill on" data-d="Saturday">Sat</div>
+        <div class="day-pill" data-d="Sunday">Sun</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" onclick="goPage2()">Next: Configure Departments →</button>
+    </div>
+  </div>
+
+  <!-- PAGE 2: Departments -->
+  <div class="page" id="page2">
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <h2>Departments &amp; Classes</h2>
+        <p>Add multiple departments. Each gets its own subjects, practicals, and timetable.</p>
+      </div>
+      <button class="btn btn-primary" onclick="addDepartment()">+ Add Department</button>
+    </div>
+
+    <div class="dept-tabs" id="deptTabs"></div>
+    <div id="deptPanels"></div>
+
+    <div class="actions">
+      <button class="btn btn-ghost" onclick="goPage(1)">← Back</button>
+      <button class="btn btn-primary" onclick="generateAll()">⚡ Generate All Timetables →</button>
+    </div>
+  </div>
+
+  <!-- PAGE 3: Preview -->
+  <div class="page" id="page3">
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <h2>Timetable Preview</h2>
+        <p>View and download timetables for each department.</p>
+      </div>
+      <div style="display:flex;gap:0.8rem;flex-wrap:wrap;">
+        <button class="btn btn-ghost" onclick="goPage(2)">← Edit</button>
+        <button class="btn btn-warn" onclick="generateAll()">↺ Regenerate All</button>
+        <button class="btn btn-success" onclick="downloadCurrentPDF()">⬇ Download This PDF</button>
+        <button class="btn btn-success" style="background:#059669;" onclick="downloadAllPDF()">⬇ Download All PDFs</button>
+      </div>
+    </div>
+
+    <div class="dept-tabs" id="previewTabs"></div>
+    <div id="previewPanels"></div>
+
+    <div style="display:flex;justify-content:flex-end;gap:0.8rem;margin-top:1rem;flex-wrap:wrap;">
+      <button class="btn btn-ghost" onclick="goPage(2)">← Edit</button>
+      <button class="btn btn-warn" onclick="generateAll()">↺ Regenerate All</button>
+      <button class="btn btn-success" onclick="downloadCurrentPDF()">⬇ Download This PDF</button>
+      <button class="btn btn-success" style="background:#059669;" onclick="downloadAllPDF()">⬇ Download All PDFs</button>
+    </div>
+  </div>
+
+</div>
+<div class="toast" id="toast"></div>
+<script src="script.js"></script>
+</body>
+</html>
