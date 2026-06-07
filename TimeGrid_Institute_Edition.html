@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeGrid — Institute Edition</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+/* ===== CSS VARIABLES ===== */
+:root {
+  --bg: #f0f4f8;
+  --white: #ffffff;
+  --border: #cbd5e1;
+  --dark: #1e293b;
+  --muted: #64748b;
+  --accent: #2563eb;
+}
+
+/* ===== RESET & BASE ===== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--dark);
+  min-height: 100vh;
+}
+
+/* ===== TOP BAR ===== */
+.topbar {
+  background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+  color: white;
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 12px #00000033;
+}
+.brand { font-family: 'Syne', sans-serif; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px; }
+.brand span { color: #93c5fd; }
+
+.nav-steps { display: flex; gap: 1rem; align-items: center; }
+.nav-step { font-size: 0.78rem; color: #93c5fd; cursor: pointer; padding: 0.35rem 0.8rem; border-radius: 6px; transition: background 0.2s; }
+.nav-step.active { background: rgba(255,255,255,0.2); color: white; }
+.nav-step.done { color: #86efac; }
+
+/* ===== LAYOUT ===== */
+.container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+.page { display: none; }
+.page.active { display: block; animation: fadeUp 0.3s ease; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* ===== FORM GRID ===== */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+
+/* ===== CARD ===== */
+.card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px #00000008; }
+.card-title { font-size: 0.9rem; font-weight: 700; color: var(--dark); margin-bottom: 1.2rem; padding-bottom: 0.7rem; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; gap: 0.5rem; }
+
+/* ===== FORM INPUTS ===== */
+label { display: block; font-size: 0.72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.35rem; margin-top: 0.9rem; }
+label:first-child { margin-top: 0; }
+
+input[type=text], input[type=number], input[type=time], select, textarea {
+  width: 100%; border: 1.5px solid var(--border); border-radius: 8px; padding: 0.6rem 0.9rem;
+  font-size: 0.88rem; font-family: 'Inter', sans-serif; color: var(--dark); background: white;
+  transition: border-color 0.2s, box-shadow 0.2s; outline: none;
+}
+input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px #2563eb22; }
+
+/* ===== GRID HELPERS ===== */
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem; }
+
+/* ===== DAY PILLS ===== */
+.days-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.4rem; }
+.day-pill { padding: 0.4rem 0.9rem; border-radius: 20px; border: 1.5px solid var(--border); font-size: 0.78rem; font-weight: 600; cursor: pointer; user-select: none; transition: all 0.2s; color: var(--muted); background: white; }
+.day-pill.on { background: #2563eb; border-color: #2563eb; color: white; }
+
+/* ===== DEPARTMENT TABS ===== */
+.dept-tabs {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.2rem;
+  padding: 0.6rem;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px #0000000a;
+}
+.dept-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.1rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  background: #f8fafc;
+  color: var(--muted);
+  transition: all 0.2s;
+}
+.dept-tab:hover { border-color: var(--accent); color: var(--accent); }
+.dept-tab.active { background: #eff6ff; border-color: var(--accent); color: var(--accent); }
+.dept-tab .tab-close {
+  width: 18px; height: 18px; border-radius: 50%; background: #fee2e2; color: #dc2626;
+  border: none; cursor: pointer; font-size: 0.7rem; display: flex; align-items: center; justify-content: center;
+  line-height: 1; transition: background 0.2s;
+}
+.dept-tab .tab-close:hover { background: #fca5a5; }
+
+/* ===== DEPT PANEL ===== */
+.dept-panel { display: none; }
+.dept-panel.active { display: block; animation: fadeUp 0.2s ease; }
+
+/* ===== DATA TABLE ===== */
+.data-table { width: 100%; border-collapse: collapse; margin-bottom: 0.8rem; }
+.data-table th { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); font-weight: 600; padding: 0.5rem 0.6rem; text-align: left; border-bottom: 2px solid #e2e8f0; }
+.data-table td { padding: 0.35rem 0.35rem; vertical-align: middle; }
+.data-table td input, .data-table td select { margin: 0; padding: 0.42rem 0.55rem; font-size: 0.82rem; }
+
+/* ===== DELETE BUTTON ===== */
+.del-btn { width: 28px; height: 28px; background: #fee2e2; border: none; border-radius: 6px; color: #dc2626; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+.del-btn:hover { background: #fca5a5; }
+
+/* ===== ADD BUTTON ===== */
+.add-btn { background: none; border: 1.5px dashed var(--border); border-radius: 8px; padding: 0.5rem 1rem; font-size: 0.82rem; color: var(--accent); cursor: pointer; width: 100%; transition: all 0.2s; font-family: 'Inter', sans-serif; }
+.add-btn:hover { border-color: var(--accent); background: #eff6ff; }
+
+/* ===== COLOR INPUT ===== */
+input[type=color] { width: 36px; height: 32px; padding: 2px; border-radius: 6px; cursor: pointer; border: 1.5px solid var(--border); }
+
+/* ===== ACTIONS BAR ===== */
+.actions { display: flex; justify-content: flex-end; gap: 1rem; padding-top: 1.5rem; border-top: 1px solid var(--border); margin-top: 1.5rem; }
+
+/* ===== BUTTONS ===== */
+.btn { font-family: 'Inter', sans-serif; font-size: 0.88rem; font-weight: 600; padding: 0.7rem 1.8rem; border-radius: 8px; cursor: pointer; border: none; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; }
+.btn-primary { background: #2563eb; color: white; box-shadow: 0 2px 8px #2563eb44; }
+.btn-primary:hover { background: #1d4ed8; transform: translateY(-1px); }
+.btn-ghost { background: white; color: var(--dark); border: 1.5px solid var(--border); }
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+.btn-success { background: #16a34a; color: white; box-shadow: 0 2px 8px #16a34a44; }
+.btn-success:hover { background: #15803d; transform: translateY(-1px); }
+.btn-warn { background: #d97706; color: white; }
+.btn-warn:hover { background: #b45309; }
+
+/* ===== TIMETABLE PREVIEW WRAPPER ===== */
+.tt-preview-wrap { background: white; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 16px #00000012; margin-bottom: 1.5rem; }
+.tt-preview-inner { width: 100%; overflow-x: auto; }
+
+/* ===== TIMETABLE TABLE ===== */
+.tt-table { width: 100%; border-collapse: collapse; font-size: 0.76rem; min-width: 900px; }
+.tt-table td, .tt-table th { border: 1px solid #94a3b8; padding: 0; text-align: center; vertical-align: middle; }
+
+.tt-inst-row td { background: #1e3a5f !important; color: white; font-weight: 700; font-size: 0.9rem; padding: 8px 12px; }
+.tt-dept-row td { background: #2563eb !important; color: white; font-weight: 600; font-size: 0.8rem; padding: 6px 10px; }
+.tt-info-row td { background: #e0e7ff; font-size: 0.75rem; padding: 5px 8px; font-weight: 600; border-bottom: 2px solid #6366f1 !important; }
+.tt-head-row th { background: #1e3a5f; color: white; font-weight: 700; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 7px 5px; }
+.tt-section-row td { background: #e0f2fe !important; color: #0c4a6e; font-weight: 700; font-size: 0.78rem; padding: 5px 10px; border-top: 2px solid #0ea5e9 !important; }
+
+.tt-num-col { background: #f8fafc; color: #374151; font-weight: 700; font-size: 0.78rem; width: 38px; }
+.tt-time-col { background: #f1f5f9; font-weight: 600; font-size: 0.7rem; color: #1e3a5f; white-space: nowrap; padding: 4px 6px; width: 95px; }
+.tt-break-row td { background: #fef3c7 !important; color: #92400e; font-weight: 700; font-size: 0.78rem; padding: 6px 10px; border-top: 2px solid #fbbf24 !important; border-bottom: 2px solid #fbbf24 !important; }
+
+/* ===== CELL INNER ===== */
+.cell-inner { padding: 5px 3px; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.25; }
+.cell-main { font-weight: 700; font-size: 0.76rem; }
+.cell-sub { font-size: 0.63rem; opacity: 0.72; margin-top: 1px; }
+.cell-free { color: #cbd5e1; font-style: italic; font-size: 0.68rem; }
+
+/* ===== STAFF TABLE ===== */
+.tt-staff-header td { background: #1e3a5f; color: white; font-weight: 700; font-size: 0.8rem; padding: 7px 12px; }
+.tt-staff-row td { font-size: 0.73rem; padding: 5px 8px; text-align: left; }
+.tt-staff-row:nth-child(even) td { background: #f8fafc; }
+
+/* ===== PAGE HEADER ===== */
+.page-header { margin-bottom: 1.5rem; }
+.page-header h2 { font-family: 'Syne', sans-serif; font-size: 1.6rem; font-weight: 800; letter-spacing: -0.5px; }
+.page-header p { color: var(--muted); font-size: 0.88rem; margin-top: 0.25rem; }
+
+/* ===== TOAST ===== */
+.toast { position: fixed; bottom: 2rem; right: 2rem; background: #1e293b; color: #86efac; padding: 0.75rem 1.5rem; border-radius: 10px; font-size: 0.82rem; z-index: 9999; transform: translateY(80px); opacity: 0; transition: all 0.3s; pointer-events: none; box-shadow: 0 4px 20px #00000033; }
+.toast.show { transform: none; opacity: 1; }
+
+/* ===== BADGE ===== */
+.badge { display: inline-block; background: #eff6ff; color: var(--accent); font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 20px; border: 1px solid #bfdbfe; margin-left: 0.5rem; }
+
+/* ===== SECTION DIVIDER ===== */
+.section-label { font-size: 0.72rem; font-weight: 700; color: #0369a1; background: #e0f2fe; display: inline-block; padding: 0.2rem 0.7rem; border-radius: 20px; margin-bottom: 0.6rem; border: 1px solid #bae6fd; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">Time<span>Grid</span> <span style="font-size:0.8rem;font-weight:400;color:#93c5fd;margin-left:6px;">Institute Edition</span></div>
+  <div class="nav-steps">
+    <div class="nav-step active" id="ns1">① Timing Setup</div>
+    <div class="nav-step" id="ns2">② Departments</div>
+    <div class="nav-step" id="ns3">③ Preview &amp; Download</div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- PAGE 1: Global Timing Setup -->
+  <div class="page active" id="page1">
+    <div class="page-header">
+      <h2>Lecture &amp; Practical Timing</h2>
+      <p>Set separate start/end times and durations for lectures and practicals. These apply globally to all departments.</p>
+    </div>
+
+    <div class="form-grid">
+      <!-- Lecture Timing -->
+      <div class="card">
+        <div class="card-title">📖 Lecture Schedule</div>
+        <div class="row2">
+          <div><label>Day Start</label><input type="time" id="lec_startTime" value="09:20"></div>
+          <div><label>Day End</label><input type="time" id="lec_endTime" value="17:20"></div>
+        </div>
+        <label>Lecture Duration (minutes)</label>
+        <select id="lec_periodDur">
+          <option value="30">30 min</option><option value="40">40 min</option>
+          <option value="45">45 min</option><option value="50" selected>50 min</option>
+          <option value="55">55 min</option><option value="60">60 min</option>
+          <option value="75">75 min</option><option value="90">90 min</option>
+        </select>
+        <label style="margin-top:1rem;">Lecture Breaks / Intervals</label>
+        <table class="data-table">
+          <thead><tr><th>Break Name</th><th>Start Time</th><th>Duration (min)</th><th>Color</th><th></th></tr></thead>
+          <tbody id="lec_breaksTbody"></tbody>
+        </table>
+        <button class="add-btn" onclick="addBreak('lec')">+ Add Lecture Break</button>
+      </div>
+
+      <!-- Practical Timing -->
+      <div class="card">
+        <div class="card-title">🔬 Practical Schedule</div>
+        <div class="row2">
+          <div><label>Practical Start</label><input type="time" id="prac_startTime" value="10:00"></div>
+          <div><label>Practical End</label><input type="time" id="prac_endTime" value="13:00"></div>
+        </div>
+        <label>Practical Slot Duration (minutes)</label>
+        <select id="prac_periodDur">
+          <option value="60">60 min</option>
+          <option value="90">90 min</option>
+          <option value="100" selected>100 min (double period)</option>
+          <option value="120">120 min</option>
+          <option value="150">150 min</option>
+          <option value="180">3 hours</option>
+        </select>
+        <label style="margin-top:1rem;">Practical Breaks / Intervals</label>
+        <table class="data-table">
+          <thead><tr><th>Break Name</th><th>Start Time</th><th>Duration (min)</th><th>Color</th><th></th></tr></thead>
+          <tbody id="prac_breaksTbody"></tbody>
+        </table>
+        <button class="add-btn" onclick="addBreak('prac')">+ Add Practical Break</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1.5rem;">
+      <div class="card-title">📅 Working Days</div>
+      <p style="font-size:0.8rem;color:var(--muted);margin-bottom:0.8rem;">Select days that apply globally to all departments.</p>
+      <div class="days-row">
+        <div class="day-pill on" data-d="Monday">Mon</div>
+        <div class="day-pill on" data-d="Tuesday">Tue</div>
+        <div class="day-pill on" data-d="Wednesday">Wed</div>
+        <div class="day-pill on" data-d="Thursday">Thu</div>
+        <div class="day-pill on" data-d="Friday">Fri</div>
+        <div class="day-pill on" data-d="Saturday">Sat</div>
+        <div class="day-pill" data-d="Sunday">Sun</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" onclick="goPage2()">Next: Configure Departments →</button>
+    </div>
+  </div>
+
+  <!-- PAGE 2: Departments -->
+  <div class="page" id="page2">
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <h2>Departments &amp; Classes</h2>
+        <p>Add multiple departments. Each gets its own subjects, practicals, and timetable.</p>
+      </div>
+      <button class="btn btn-primary" onclick="addDepartment()">+ Add Department</button>
+    </div>
+
+    <div class="dept-tabs" id="deptTabs"></div>
+    <div id="deptPanels"></div>
+
+    <div class="actions">
+      <button class="btn btn-ghost" onclick="goPage(1)">← Back</button>
+      <button class="btn btn-primary" onclick="generateAll()">⚡ Generate All Timetables →</button>
+    </div>
+  </div>
+
+  <!-- PAGE 3: Preview -->
+  <div class="page" id="page3">
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <h2>Timetable Preview</h2>
+        <p>View and download timetables for each department.</p>
+      </div>
+      <div style="display:flex;gap:0.8rem;flex-wrap:wrap;">
+        <button class="btn btn-ghost" onclick="goPage(2)">← Edit</button>
+        <button class="btn btn-warn" onclick="generateAll()">↺ Regenerate All</button>
+        <button class="btn btn-success" onclick="downloadCurrentPDF()">⬇ Download This PDF</button>
+        <button class="btn btn-success" style="background:#059669;" onclick="downloadAllPDF()">⬇ Download All PDFs</button>
+      </div>
+    </div>
+
+    <div class="dept-tabs" id="previewTabs"></div>
+    <div id="previewPanels"></div>
+
+    <div style="display:flex;justify-content:flex-end;gap:0.8rem;margin-top:1rem;flex-wrap:wrap;">
+      <button class="btn btn-ghost" onclick="goPage(2)">← Edit</button>
+      <button class="btn btn-warn" onclick="generateAll()">↺ Regenerate All</button>
+      <button class="btn btn-success" onclick="downloadCurrentPDF()">⬇ Download This PDF</button>
+      <button class="btn btn-success" style="background:#059669;" onclick="downloadAllPDF()">⬇ Download All PDFs</button>
+    </div>
+  </div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================================================
+   TimeGrid — Institute Edition  |  script.js
+   Unified Table | Rotating Practicals | Smart Scheduling
+   =================================================== */
+
+/* ===== GLOBAL STATE ===== */
+var G = {
+  days: [],
+  lecTiming: {},
+  pracTiming: {},
+  lecBreaks: [],
+  pracBreaks: []
+};
+
+var DEPTS = [];
+var activeDeptIdx = 0;
+var activePreviewIdx = 0;
+
+var bIdLec = 0, bIdPrac = 0, sId = 0, pId = 0, dId = 0;
+
+var COLORS = ['#dbeafe','#fef9c3','#dcfce7','#fce7f3','#ffedd5','#e0e7ff','#cffafe','#fde68a','#d1fae5','#fecaca','#ede9fe','#fee2e2'];
+
+/* ===== HELPERS ===== */
+function shuffle(a) {
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+  }
+  return a;
+}
+function v(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+function t2m(t) { var p = t.split(':'); return parseInt(p[0]) * 60 + parseInt(p[1]); }
+function m2t(m) { var h = Math.floor(m / 60), mn = m % 60; return (h < 10 ? '0' : '') + h + ':' + (mn < 10 ? '0' : '') + mn; }
+function fmtT(t) { var p = t.split(':'), h = parseInt(p[0]), m = parseInt(p[1]); var ap = h >= 12 ? 'PM' : 'AM', hh = h % 12 || 12; return hh + ':' + (m === 0 ? '00' : (m < 10 ? '0' : '') + m) + ' ' + ap; }
+function fmtSlot(s, e) { return fmtT(s) + ' \u2013 ' + fmtT(e); }
+function hexAlpha(hex, alpha) {
+  hex = hex.replace('#','');
+  if (hex.length === 3) hex = hex.split('').map(function(x){return x+x;}).join('');
+  var r = parseInt(hex.slice(0,2),16), g = parseInt(hex.slice(2,4),16), b = parseInt(hex.slice(4,6),16);
+  return 'rgba('+r+','+g+','+b+','+alpha+')';
+}
+function toast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 3000);
+}
+
+/* ===== INIT ===== */
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.day-pill').forEach(function(p) {
+    p.addEventListener('click', function() { p.classList.toggle('on'); });
+  });
+  addBreak('lec', 'Lunch Break', '11:00', 50, '#fef9c3');
+  addBreak('lec', 'Short Recess', '13:30', 15, '#fce7f3');
+  addDepartment(true);
+});
+
+/* ===================================================
+   BREAKS
+   =================================================== */
+function addBreak(type, name, st, dur, color) {
+  name  = name  || '';
+  st    = st    || '';
+  dur   = dur   || 30;
+  color = color || '#fef9c3';
+  var prefix = type === 'lec' ? 'lec' : 'prac';
+  if (type === 'lec') bIdLec++; else bIdPrac++;
+  var id = prefix + 'b' + (type === 'lec' ? bIdLec : bIdPrac);
+  var tr = document.createElement('tr');
+  tr.id = id;
+  tr.innerHTML =
+    '<td><input type="text"   value="' + name  + '" placeholder="Break name"></td>' +
+    '<td><input type="time"   value="' + st    + '"></td>' +
+    '<td><input type="number" value="' + dur   + '" min="5" max="120" style="width:75px;"></td>' +
+    '<td><input type="color"  value="' + color + '"></td>' +
+    '<td><button class="del-btn" onclick="document.getElementById(\'' + id + '\').remove()">&#10005;</button></td>';
+  document.getElementById(prefix + '_breaksTbody').appendChild(tr);
+}
+
+function collectBreaks(type) {
+  var prefix = type === 'lec' ? 'lec' : 'prac';
+  var rows = document.querySelectorAll('#' + prefix + '_breaksTbody tr');
+  var result = [];
+  for (var ri = 0; ri < rows.length; ri++) {
+    var inputs = rows[ri].querySelectorAll('input');
+    if (inputs[1] && inputs[1].value) {
+      result.push({ name: inputs[0].value || 'Break', startTime: inputs[1].value, duration: parseInt(inputs[2].value) || 30, color: inputs[3].value });
+    }
+  }
+  return result;
+}
+
+/* ===================================================
+   DEPARTMENTS
+   =================================================== */
+function makeDeptId() { dId++; return 'd' + dId; }
+
+function addDepartment(withSampleData) {
+  var id = makeDeptId();
+  var idx = DEPTS.length;
+  var dept = {
+    id: id,
+    inst: {
+      name: "SES's R. C. Patel Institute of Technology, Shirpur",
+      dept: 'Data Science (CSE)',
+      sem:  'EVEN Sem',
+      year: 'Academic Year 2025-26',
+      cls:  'S Y BTech DS (B)',
+      room: 'SF-88 (2nd Floor)',
+      wef:  '20/02/2026'
+    },
+    options: { noConsec: true, spread: true, zeroHour: true, mondayFirst: '', satLast: '' },
+    subjects: [],
+    practicals: [],
+    tt: null,
+    slots: { lec: [], prac: [] }
+  };
+  DEPTS.push(dept);
+  renderDeptTabs();
+  buildDeptPanel(idx, withSampleData);
+  switchDeptTab(idx);
+}
+
+function removeDepartment(idx) {
+  if (DEPTS.length <= 1) { toast('At least one department is required.'); return; }
+  DEPTS.splice(idx, 1);
+  if (activeDeptIdx >= DEPTS.length) activeDeptIdx = DEPTS.length - 1;
+  renderDeptTabs();
+  renderAllDeptPanels();
+  switchDeptTab(activeDeptIdx);
+}
+
+function renderDeptTabs() {
+  var tabs = document.getElementById('deptTabs');
+  tabs.innerHTML = '';
+  for (var i = 0; i < DEPTS.length; i++) {
+    var d = DEPTS[i];
+    var label = (d.inst.cls || d.inst.dept || ('Dept ' + (i+1)));
+    var tab = document.createElement('div');
+    tab.className = 'dept-tab' + (i === activeDeptIdx ? ' active' : '');
+    tab.dataset.idx = i;
+    tab.innerHTML = '&#127963; ' + label +
+      '<button class="tab-close" onclick="event.stopPropagation();removeDepartment(' + i + ')" title="Remove">&#x2715;</button>';
+    tab.addEventListener('click', function(e) { if (!e.target.classList.contains('tab-close')) switchDeptTab(parseInt(this.dataset.idx)); });
+    tabs.appendChild(tab);
+  }
+}
+
+function switchDeptTab(idx) {
+  activeDeptIdx = idx;
+  document.querySelectorAll('#deptTabs .dept-tab').forEach(function(t, i) { t.classList.toggle('active', i === idx); });
+  document.querySelectorAll('#deptPanels .dept-panel').forEach(function(p, i) { p.classList.toggle('active', i === idx); });
+}
+
+function renderAllDeptPanels() {
+  document.getElementById('deptPanels').innerHTML = '';
+  for (var i = 0; i < DEPTS.length; i++) buildDeptPanel(i, false);
+}
+
+function buildDeptPanel(idx, withSampleData) {
+  var d = DEPTS[idx];
+  var panel = document.createElement('div');
+  panel.className = 'dept-panel';
+  panel.id = 'deptPanel_' + idx;
+  panel.dataset.idx = idx;
+  panel.innerHTML = buildDeptPanelHTML(idx, d);
+  document.getElementById('deptPanels').appendChild(panel);
+
+  if (withSampleData) {
+    addSubjectToPanel(idx, 'DS',   'Data Science',        'Prof. S.K. Bhandare', 4, '#dbeafe', 'SF-88');
+    addSubjectToPanel(idx, 'ML-I', 'Machine Learning I',  'Prof. S.P. Salunke',  5, '#fef9c3', 'SF-88');
+    addSubjectToPanel(idx, 'SDS',  'Soft & Dev. Skills',  'Prof. A.B. Patil',    4, '#dcfce7', 'SF-88');
+    addSubjectToPanel(idx, 'OE',   'Open Elective',       'Dr. K.D. Chaudhari',  2, '#fce7f3', 'SF-88');
+    addSubjectToPanel(idx, 'EFM',  'Engg. Finance Mgmt.', 'Prof. K.D. Deore',    3, '#ffedd5', 'SF-88');
+    addSubjectToPanel(idx, 'PBC',  'Python for Big Data', 'Prof. Surekha Patil', 2, '#e0e7ff', 'SF-88');
+    addPracticalToPanel(idx, 'DS',   'Prof. Dr. P.S. Sanjekar', 'S1,S2,S3', 2);
+    addPracticalToPanel(idx, 'ML-I', 'Prof. S.P. Salunke',      'S1,S2,S3', 2);
+    addPracticalToPanel(idx, 'SDS',  'Dr. M.S. Patil',          'S1,S2,S3', 2);
+  }
+}
+
+function buildDeptPanelHTML(idx, d) {
+  return '<div class="form-grid" style="margin-bottom:1.2rem;">' +
+    '<div class="card">' +
+      '<div class="card-title">&#127963;&#65039; Institution Details</div>' +
+      '<label>Institution Name</label>' +
+      '<input type="text" id="d' + idx + '_instName" value="' + esc(d.inst.name) + '">' +
+      '<label>Department</label>' +
+      '<input type="text" id="d' + idx + '_instDept" value="' + esc(d.inst.dept) + '">' +
+      '<label>Semester / Academic Year</label>' +
+      '<div class="row2"><input type="text" id="d' + idx + '_instSem" value="' + esc(d.inst.sem) + '"><input type="text" id="d' + idx + '_instYear" value="' + esc(d.inst.year) + '"></div>' +
+      '<label>Class / Room</label>' +
+      '<div class="row2"><input type="text" id="d' + idx + '_instClass" value="' + esc(d.inst.cls) + '"><input type="text" id="d' + idx + '_instRoom" value="' + esc(d.inst.room) + '"></div>' +
+      '<label>W.E.F. Date</label>' +
+      '<input type="text" id="d' + idx + '_instWef" value="' + esc(d.inst.wef) + '">' +
+    '</div>' +
+    '<div class="card">' +
+      '<div class="card-title">&#9881;&#65039; Smart Options</div>' +
+      '<div style="display:flex;flex-direction:column;gap:0.9rem;margin-bottom:1rem;">' +
+        checkOpt('d' + idx + '_optNoConsec', 'Avoid consecutive same subject', true) +
+        checkOpt('d' + idx + '_optSpread',   'Spread subjects evenly across week', true) +
+        checkOpt('d' + idx + '_optZeroHour', 'Include Zero Hour (last slot)',  true) +
+      '</div>' +
+      '<div class="row2">' +
+        '<div><label>Monday First Period</label><select id="d' + idx + '_mondayFirst"><option value="">&#8212; Regular &#8212;</option><option value="Assembly">Assembly / Prayer</option><option value="Library Hr.">Library Hr.</option></select></div>' +
+        '<div><label>Saturday Last (before Zero Hour)</label><select id="d' + idx + '_satLast"><option value="">&#8212; Regular &#8212;</option><option value="Sports">Sports</option><option value="Club Activity">Club Activity</option><option value="Library Hr.">Library Hr.</option></select></div>' +
+      '</div>' +
+    '</div>' +
+  '</div>' +
+  '<div class="card" style="margin-bottom:1.2rem;">' +
+    '<div class="card-title">&#128218; Theory Subjects</div>' +
+    '<table class="data-table"><thead><tr>' +
+      '<th>Code</th><th style="min-width:140px;">Subject Name</th><th style="min-width:130px;">Teacher (TH)</th>' +
+      '<th>Periods/Wk</th><th>Color</th><th>Room</th><th></th>' +
+    '</tr></thead>' +
+    '<tbody id="d' + idx + '_subjTbody"></tbody></table>' +
+    '<button class="add-btn" onclick="addSubjectToPanel(' + idx + ')">+ Add Subject</button>' +
+  '</div>' +
+  '<div class="card" style="margin-bottom:1.2rem;">' +
+    '<div class="card-title">&#128300; Practicals / Lab Groups <span class="badge">Optional</span></div>' +
+    '<p style="font-size:0.8rem;color:var(--muted);margin-bottom:1rem;">Practical slots use Practical Schedule timing from Step 1. Each batch gets a <strong>different rotating practical</strong> each day. No lectures are scheduled during practical time.</p>' +
+    '<table class="data-table"><thead><tr>' +
+      '<th>Subject Code</th><th>Teacher (PR)</th><th>Groups (e.g. S1,S2,S3)</th><th>Sessions/Wk</th><th></th>' +
+    '</tr></thead>' +
+    '<tbody id="d' + idx + '_pracTbody"></tbody></table>' +
+    '<button class="add-btn" onclick="addPracticalToPanel(' + idx + ')">+ Add Practical</button>' +
+  '</div>';
+}
+
+function checkOpt(id, label, checked) {
+  return '<label style="display:flex;align-items:center;gap:8px;margin:0;text-transform:none;font-size:0.85rem;cursor:pointer;">' +
+    '<input type="checkbox" id="' + id + '"' + (checked ? ' checked' : '') + ' style="width:auto;margin:0;"> ' + label + '</label>';
+}
+
+function esc(s) { return (s || '').replace(/"/g, '&quot;'); }
+
+/* ===================================================
+   SUBJECTS PER DEPT
+   =================================================== */
+function addSubjectToPanel(idx, code, name, teacher, periods, color, room) {
+  code    = code    || '';
+  name    = name    || '';
+  teacher = teacher || '';
+  periods = periods || 3;
+  room    = room    || '';
+  sId++;
+  var col = color || COLORS[(sId - 1) % COLORS.length];
+  var id  = 'd' + idx + 's' + sId;
+  var tr  = document.createElement('tr');
+  tr.id = id;
+  tr.innerHTML =
+    '<td><input type="text"   value="' + esc(code)    + '" placeholder="DS"           style="width:60px;"></td>' +
+    '<td><input type="text"   value="' + esc(name)    + '" placeholder="Subject Name"></td>' +
+    '<td><input type="text"   value="' + esc(teacher) + '" placeholder="Prof. Name"></td>' +
+    '<td><input type="number" value="' + periods       + '" min="1" max="20"           style="width:60px;"></td>' +
+    '<td><input type="color"  value="' + col           + '"></td>' +
+    '<td><input type="text"   value="' + esc(room)    + '" placeholder="Room"         style="width:65px;"></td>' +
+    '<td><button class="del-btn" onclick="document.getElementById(\'' + id + '\').remove()">&#10005;</button></td>';
+  document.getElementById('d' + idx + '_subjTbody').appendChild(tr);
+}
+
+function collectSubjectsForPanel(idx) {
+  var rows = document.querySelectorAll('#d' + idx + '_subjTbody tr');
+  var result = [];
+  for (var ri = 0; ri < rows.length; ri++) {
+    var inputs = rows[ri].querySelectorAll('input');
+    var name = inputs[1].value.trim();
+    if (name) result.push({ code: inputs[0].value.trim(), name: name, teacher: inputs[2].value.trim(), periods: parseInt(inputs[3].value) || 3, color: inputs[4].value, room: inputs[5].value.trim() });
+  }
+  return result;
+}
+
+/* ===================================================
+   PRACTICALS PER DEPT
+   =================================================== */
+function addPracticalToPanel(idx, code, teacher, groups, periods) {
+  code    = code    || '';
+  teacher = teacher || '';
+  groups  = groups  || 'S1,S2,S3';
+  periods = periods || 2;
+  pId++;
+  var id = 'd' + idx + 'p' + pId;
+  var tr = document.createElement('tr');
+  tr.id = id;
+  tr.innerHTML =
+    '<td><input type="text"   value="' + esc(code)    + '" placeholder="DS"       style="width:68px;"></td>' +
+    '<td><input type="text"   value="' + esc(teacher) + '" placeholder="Prof. Name"></td>' +
+    '<td><input type="text"   value="' + esc(groups)  + '" placeholder="S1,S2,S3"></td>' +
+    '<td><input type="number" value="' + periods       + '" min="1" max="10"       style="width:60px;"></td>' +
+    '<td><button class="del-btn" onclick="document.getElementById(\'' + id + '\').remove()">&#10005;</button></td>';
+  document.getElementById('d' + idx + '_pracTbody').appendChild(tr);
+}
+
+function collectPracticalsForPanel(idx) {
+  var rows = document.querySelectorAll('#d' + idx + '_pracTbody tr');
+  var result = [];
+  for (var ri = 0; ri < rows.length; ri++) {
+    var inputs = rows[ri].querySelectorAll('input');
+    var code = inputs[0].value.trim();
+    if (code) result.push({ code: code, teacher: inputs[1].value.trim(), groups: inputs[2].value.trim(), periods: parseInt(inputs[3].value) || 2 });
+  }
+  return result;
+}
+
+/* ===================================================
+   NAVIGATION
+   =================================================== */
+function goPage(n) {
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.getElementById('page' + n).classList.add('active');
+  document.querySelectorAll('.nav-step').forEach(function(s, i) {
+    s.className = 'nav-step' + (i + 1 < n ? ' done' : i + 1 === n ? ' active' : '');
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function goPage2() {
+  collectGlobalTiming();
+  renderDeptTabs();
+  goPage(2);
+}
+
+function collectGlobalTiming() {
+  var pills = document.querySelectorAll('.day-pill.on');
+  G.days = [];
+  for (var i = 0; i < pills.length; i++) G.days.push(pills[i].dataset.d);
+  G.lecTiming  = { start: v('lec_startTime'),  end: v('lec_endTime'),  dur: parseInt(v('lec_periodDur'))  || 50  };
+  G.pracTiming = { start: v('prac_startTime'), end: v('prac_endTime'), dur: parseInt(v('prac_periodDur')) || 100 };
+  G.lecBreaks  = collectBreaks('lec');
+  G.pracBreaks = collectBreaks('prac');
+}
+
+/* ===================================================
+   SLOT BUILDER
+   =================================================== */
+function buildSlots(timing, breaks) {
+  var slots  = [];
+  var start  = t2m(timing.start);
+  var end    = t2m(timing.end);
+  var dur    = timing.dur;
+  var brks   = (breaks || []).slice().sort(function(a, b) { return t2m(a.startTime) - t2m(b.startTime); });
+  var cur = start, pn = 1;
+
+  while (cur < end) {
+    var brk = null;
+    for (var bi = 0; bi < brks.length; bi++) {
+      if (t2m(brks[bi].startTime) === cur) { brk = brks[bi]; break; }
+    }
+    if (brk) {
+      slots.push({ type:'break', name:brk.name, start:m2t(cur), end:m2t(cur+brk.duration), dur:brk.duration, color:brk.color });
+      cur += brk.duration; continue;
+    }
+    var nextBrk = null;
+    for (var bi2 = 0; bi2 < brks.length; bi2++) {
+      var bt = t2m(brks[bi2].startTime);
+      if (bt > cur && bt < cur + dur) { nextBrk = brks[bi2]; break; }
+    }
+    var slotDur = nextBrk ? t2m(nextBrk.startTime) - cur : Math.min(dur, end - cur);
+    if (slotDur < 10) break;
+    slots.push({ type:'period', num:pn++, start:m2t(cur), end:m2t(cur+slotDur), dur:slotDur });
+    cur += slotDur;
+  }
+  return slots;
+}
+
+/* ===================================================
+   UNIFIED SLOT BUILDER
+   Builds ONE combined timeline:
+   - Morning lecture slots (before practical time)
+   - Practical block (containing practical sub-slots)
+   - Afternoon lecture slots (after practical time)
+   Lecture slots that fall inside the practical window are omitted.
+   =================================================== */
+function buildUnifiedSlots(hasPracticals) {
+  if (!hasPracticals) {
+    var ls = buildSlots(G.lecTiming, G.lecBreaks);
+    ls.forEach(function(s){ s.section = 'lec'; });
+    return ls;
+  }
+
+  var pracStart = t2m(G.pracTiming.start);
+  var pracEnd   = t2m(G.pracTiming.end);
+  var lecStart  = t2m(G.lecTiming.start);
+  var lecEnd    = t2m(G.lecTiming.end);
+
+  /* Practical slots */
+  var pracSlots = buildSlots(G.pracTiming, G.pracBreaks);
+  pracSlots.forEach(function(s){ s.section = 'prac'; });
+
+  /* Morning lectures: lecStart up to pracStart (or all if no overlap) */
+  var unified = [];
+
+  if (lecStart < pracStart) {
+    var mBreaks = (G.lecBreaks || []).filter(function(b){
+      var bs = t2m(b.startTime);
+      return bs < pracStart;
+    });
+    var mSlots = buildSlots({ start: G.lecTiming.start, end: m2t(Math.min(pracStart, lecEnd)), dur: G.lecTiming.dur }, mBreaks);
+    mSlots.forEach(function(s){ s.section = 'lec'; unified.push(s); });
+  }
+
+  /* Practical block */
+  unified.push({ type: 'prac-block', section: 'prac', start: m2t(pracStart), end: m2t(pracEnd), pracSlots: pracSlots });
+
+  /* Afternoon lectures: pracEnd up to lecEnd */
+  if (pracEnd < lecEnd) {
+    var aBreaks = (G.lecBreaks || []).filter(function(b){
+      return t2m(b.startTime) >= pracEnd;
+    });
+    var aSlots = buildSlots({ start: m2t(pracEnd), end: G.lecTiming.end, dur: G.lecTiming.dur }, aBreaks);
+    /* Renumber period numbers continuing from morning */
+    var morningPeriodCount = unified.filter(function(s){ return s.type === 'period'; }).length;
+    aSlots.forEach(function(s){
+      s.section = 'lec';
+      if (s.type === 'period') s.num += morningPeriodCount;
+      unified.push(s);
+    });
+  }
+
+  return unified;
+}
+
+/* ===================================================
+   TIMETABLE GENERATION (per department)
+   =================================================== */
+function generateForDept(idx) {
+  var d    = DEPTS[idx];
+  var days = G.days;
+
+  /* Collect */
+  d.subjects   = collectSubjectsForPanel(idx);
+  d.practicals = collectPracticalsForPanel(idx);
+  d.options = {
+    noConsec:    document.getElementById('d' + idx + '_optNoConsec') ? document.getElementById('d' + idx + '_optNoConsec').checked : true,
+    spread:      document.getElementById('d' + idx + '_optSpread')   ? document.getElementById('d' + idx + '_optSpread').checked   : true,
+    zeroHour:    document.getElementById('d' + idx + '_optZeroHour') ? document.getElementById('d' + idx + '_optZeroHour').checked : true,
+    mondayFirst: v('d' + idx + '_mondayFirst'),
+    satLast:     v('d' + idx + '_satLast')
+  };
+  d.inst = {
+    name: v('d' + idx + '_instName'), dept: v('d' + idx + '_instDept'),
+    sem:  v('d' + idx + '_instSem'),  year: v('d' + idx + '_instYear'),
+    cls:  v('d' + idx + '_instClass'), room: v('d' + idx + '_instRoom'),
+    wef:  v('d' + idx + '_instWef')
+  };
+
+  var hasPracticals = d.practicals.length > 0;
+
+  /* Build raw slots */
+  var lecSlots  = buildSlots(G.lecTiming,  G.lecBreaks);
+  var pracSlots = buildSlots(G.pracTiming, G.pracBreaks);
+  var lecPeriods  = lecSlots.filter(function(s){ return s.type === 'period'; });
+  var pracPeriods = pracSlots.filter(function(s){ return s.type === 'period'; });
+
+  /* Determine which lecPeriod indices are blocked by practical time */
+  var pracStart = t2m(G.pracTiming.start);
+  var pracEnd   = t2m(G.pracTiming.end);
+  function isLecBlocked(slot) {
+    if (!hasPracticals) return false;
+    var ss = t2m(slot.start), se = t2m(slot.end);
+    /* Block if the period starts AND ends within the practical window */
+    return ss >= pracStart && se <= pracEnd;
+  }
+
+  var availLecIndices = [];
+  for (var li = 0; li < lecPeriods.length; li++) {
+    if (!isLecBlocked(lecPeriods[li])) availLecIndices.push(li);
+  }
+
+  /* -----------------------------------------------
+     LECTURE TIMETABLE
+     ----------------------------------------------- */
+  var tt = {};
+  for (var di0 = 0; di0 < days.length; di0++) {
+    tt[days[di0]] = [];
+    for (var pi0 = 0; pi0 < lecPeriods.length; pi0++) tt[days[di0]].push(null);
+  }
+
+  /* Mark blocked slots */
+  if (hasPracticals) {
+    for (var dib = 0; dib < days.length; dib++) {
+      for (var lib = 0; lib < lecPeriods.length; lib++) {
+        if (isLecBlocked(lecPeriods[lib])) {
+          tt[days[dib]][lib] = { isPracTime: true };
+        }
+      }
+    }
+  }
+
+  /* Zero Hour */
+  if (d.options.zeroHour && availLecIndices.length > 0) {
+    var zhIdx = availLecIndices[availLecIndices.length - 1];
+    for (var di1 = 0; di1 < days.length; di1++) {
+      tt[days[di1]][zhIdx] = { code:'ZH', name:'Zero Hour', teacher:'', color:'#f1f5f9', isZero:true };
+    }
+  }
+
+  /* Monday first */
+  if (d.options.mondayFirst && days.indexOf('Monday') !== -1 && availLecIndices.length > 0) {
+    tt['Monday'][availLecIndices[0]] = { code:d.options.mondayFirst, name:d.options.mondayFirst, teacher:'', color:'#f0fdf4', isFixed:true };
+  }
+
+  /* Saturday last */
+  if (d.options.satLast && days.indexOf('Saturday') !== -1 && availLecIndices.length > 1) {
+    var slOffset = d.options.zeroHour ? 2 : 1;
+    var satIdx2 = availLecIndices[availLecIndices.length - slOffset];
+    if (satIdx2 !== undefined) tt['Saturday'][satIdx2] = { code:d.options.satLast, name:d.options.satLast, teacher:'', color:'#f0fdf4', isFixed:true };
+  }
+
+  /* Theory pool */
+  var pool = [];
+  for (var sj = 0; sj < d.subjects.length; sj++) {
+    for (var pi2 = 0; pi2 < d.subjects[sj].periods; pi2++) {
+      var copy = {}; for (var k in d.subjects[sj]) copy[k] = d.subjects[sj][k];
+      copy.isTh = true; pool.push(copy);
+    }
+  }
+  shuffle(pool);
+
+  if (d.options.spread) {
+    var di4 = 0;
+    for (var pi3 = 0; pi3 < pool.length; pi3++) {
+      var subj2 = pool[pi3]; var placed2 = false;
+      for (var att = 0; att < days.length * availLecIndices.length * 3 && !placed2; att++) {
+        var day2 = days[di4 % days.length]; di4++;
+        var empties = [];
+        for (var ei = 0; ei < availLecIndices.length; ei++) {
+          var ai = availLecIndices[ei];
+          if (tt[day2][ai] === null) empties.push(ai);
+        }
+        if (!empties.length) continue;
+        var si2 = empties[Math.floor(Math.random() * empties.length)];
+        if (d.options.noConsec) {
+          var nc = [];
+          for (var ei2 = 0; ei2 < empties.length; ei2++) {
+            var idx2 = empties[ei2];
+            var prev = tt[day2][idx2 - 1], next = tt[day2][idx2 + 1];
+            if ((!prev || prev.code !== subj2.code) && (!next || next.code !== subj2.code)) nc.push(idx2);
+          }
+          if (nc.length) si2 = nc[Math.floor(Math.random() * nc.length)];
+        }
+        tt[day2][si2] = subj2; placed2 = true;
+      }
+      if (!placed2) {
+        for (var di5 = 0; di5 < days.length; di5++) {
+          var emp2 = [];
+          for (var ei3 = 0; ei3 < availLecIndices.length; ei3++) {
+            var ai3 = availLecIndices[ei3];
+            if (tt[days[di5]][ai3] === null) emp2.push(ai3);
+          }
+          if (emp2.length) { tt[days[di5]][emp2[0]] = subj2; break; }
+        }
+      }
+    }
+  } else {
+    var poolIdx = 0;
+    outerLec:
+    for (var di6 = 0; di6 < days.length; di6++) {
+      for (var ai6 = 0; ai6 < availLecIndices.length; ai6++) {
+        var aidx6 = availLecIndices[ai6];
+        if (tt[days[di6]][aidx6] !== null) continue;
+        if (poolIdx >= pool.length) break outerLec;
+        tt[days[di6]][aidx6] = pool[poolIdx++];
+      }
+    }
+  }
+
+  /* Fill remaining empty available lecture slots */
+  var fillSubjects = d.subjects.length > 0 ? d.subjects.slice() : [{ code:'FREE', name:'Free Period', teacher:'', color:'#f1f5f9', periods:1 }];
+  for (var fdi = 0; fdi < days.length; fdi++) {
+    var fday = days[fdi];
+    for (var fai = 0; fai < availLecIndices.length; fai++) {
+      var faidx = availLecIndices[fai];
+      if (tt[fday][faidx] !== null) continue;
+      var counts = {};
+      for (var csj = 0; csj < fillSubjects.length; csj++) counts[fillSubjects[csj].code] = 0;
+      for (var cdi = 0; cdi < days.length; cdi++) {
+        for (var cai = 0; cai < availLecIndices.length; cai++) {
+          var cc = tt[days[cdi]][availLecIndices[cai]];
+          if (cc && counts[cc.code] !== undefined) counts[cc.code]++;
+        }
+      }
+      var sorted = fillSubjects.slice().sort(function(a, b){ return counts[a.code] - counts[b.code]; });
+      var chosen = null;
+      for (var fi = 0; fi < sorted.length; fi++) {
+        var cand = sorted[fi];
+        if (d.options.noConsec) {
+          var prevCell = faidx > 0 ? tt[fday][faidx - 1] : null;
+          var nextCell = faidx < lecPeriods.length - 1 ? tt[fday][faidx + 1] : null;
+          if ((prevCell && prevCell.code === cand.code) || (nextCell && nextCell.code === cand.code)) continue;
+        }
+        chosen = cand; break;
+      }
+      if (!chosen) chosen = sorted[0];
+      var fillCopy = {}; for (var fk in chosen) fillCopy[fk] = chosen[fk];
+      fillCopy.isTh = true; fillCopy.isFill = true;
+      tt[fday][faidx] = fillCopy;
+    }
+  }
+
+  /* -----------------------------------------------
+     PRACTICAL TIMETABLE
+     
+     ROTATION LOGIC:
+     We have N practicals (DS, ML-I, SDS) and M batches (S1, S2, S3).
+     On each practical day, ALL batches are in the lab at the same time
+     but doing DIFFERENT practicals (rotating each day).
+     
+     Day 1: S1→DS, S2→ML-I, S3→SDS
+     Day 2: S1→ML-I, S2→SDS, S3→DS
+     Day 3: S1→SDS, S2→DS, S3→ML-I
+     etc.
+     ----------------------------------------------- */
+  var pracTT = {};
+  for (var pdi0 = 0; pdi0 < days.length; pdi0++) {
+    pracTT[days[pdi0]] = [];
+    for (var ppi0 = 0; ppi0 < pracPeriods.length; ppi0++) pracTT[days[pdi0]].push(null);
+  }
+
+  if (hasPracticals && pracPeriods.length > 0) {
+    /* All unique groups */
+    var allGroups = [];
+    for (var pri0 = 0; pri0 < d.practicals.length; pri0++) {
+      var gs0 = d.practicals[pri0].groups.split(',').map(function(g){ return g.trim(); }).filter(function(g){ return g; });
+      for (var gi0 = 0; gi0 < gs0.length; gi0++) {
+        if (allGroups.indexOf(gs0[gi0]) === -1) allGroups.push(gs0[gi0]);
+      }
+    }
+
+    /* Practical definitions */
+    var pracDefs = [];
+    for (var pri1 = 0; pri1 < d.practicals.length; pri1++) {
+      var pr1 = d.practicals[pri1];
+      var subj1 = null;
+      for (var sj1 = 0; sj1 < d.subjects.length; sj1++) { if (d.subjects[sj1].code === pr1.code) { subj1 = d.subjects[sj1]; break; } }
+      pracDefs.push({ code: pr1.code, teacher: pr1.teacher, color: subj1 ? subj1.color : '#e0e7ff' });
+    }
+
+    /* How many practical days per week (based on max sessions/week) */
+    var maxSessions = 0;
+    for (var pri2 = 0; pri2 < d.practicals.length; pri2++) {
+      if (d.practicals[pri2].periods > maxSessions) maxSessions = d.practicals[pri2].periods;
+    }
+    if (maxSessions > days.length) maxSessions = days.length;
+
+    /* Spread practical days evenly across the week */
+    var pracDayIndices = [];
+    var step = days.length / maxSessions;
+    for (var si4 = 0; si4 < maxSessions; si4++) {
+      var dayIdx = Math.round(si4 * step);
+      if (dayIdx >= days.length) dayIdx = days.length - 1;
+      pracDayIndices.push(dayIdx);
+    }
+    /* Deduplicate */
+    var seenDays = {}, uniquePracDays = [];
+    for (var pi4 = 0; pi4 < pracDayIndices.length; pi4++) {
+      if (!seenDays[pracDayIndices[pi4]]) { seenDays[pracDayIndices[pi4]] = true; uniquePracDays.push(pracDayIndices[pi4]); }
+    }
+
+    /* For each practical day, assign rotating practicals to groups */
+    for (var pdi3 = 0; pdi3 < uniquePracDays.length; pdi3++) {
+      var pday = days[uniquePracDays[pdi3]];
+
+      if (pracDefs.length === 0) continue;
+
+      var parallelPracs = [];
+
+      if (allGroups.length === 0) {
+        /* No groups defined — rotate whole practical entries */
+        var rotIdx = pdi3 % pracDefs.length;
+        parallelPracs.push({
+          code:    pracDefs[rotIdx].code + ' (PR)',
+          teacher: pracDefs[rotIdx].teacher,
+          groups:  ['All'],
+          color:   pracDefs[rotIdx].color,
+          isPrac:  true
+        });
+      } else {
+        /* Each group gets a different practical, offset by day index for rotation */
+        var assignedGroups = {};
+        for (var gi7 = 0; gi7 < allGroups.length; gi7++) {
+          var group = allGroups[gi7];
+          /* rotate: group gi7 on practical day pdi3 → pracDefs[(pdi3 + gi7) % pracDefs.length] */
+          var rotIdx2 = (pdi3 + gi7) % pracDefs.length;
+          var pCode = pracDefs[rotIdx2].code;
+          if (!assignedGroups[pCode]) {
+            assignedGroups[pCode] = {
+              code:    pCode + ' (PR)',
+              teacher: pracDefs[rotIdx2].teacher,
+              groups:  [],
+              color:   pracDefs[rotIdx2].color,
+              isPrac:  true
+            };
+          }
+          assignedGroups[pCode].groups.push(group);
+        }
+        for (var ac in assignedGroups) {
+          if (assignedGroups.hasOwnProperty(ac)) parallelPracs.push(assignedGroups[ac]);
+        }
+      }
+
+      /* Build merged cell for prac slot 0 */
+      var allGroupsFlat = [];
+      for (var pp2 = 0; pp2 < parallelPracs.length; pp2++) {
+        for (var gg = 0; gg < parallelPracs[pp2].groups.length; gg++) allGroupsFlat.push(parallelPracs[pp2].groups[gg]);
+      }
+
+      pracTT[pday][0] = parallelPracs.length === 1
+        ? parallelPracs[0]
+        : { code:'Practical', name:'Practical', isPrac:true, isMultiPrac:true, parallelPracs:parallelPracs, groups:allGroupsFlat, color:parallelPracs[0].color };
+
+      /* Fill extra prac slots as free */
+      for (var psi2 = 1; psi2 < pracPeriods.length; psi2++) {
+        pracTT[pday][psi2] = { code:'\u2014', name:'Free', teacher:'', color:'#f8fafc', isFree:true };
+      }
+    }
+
+    /* Free up all non-practical days */
+    for (var pfdi = 0; pfdi < days.length; pfdi++) {
+      for (var pfsi = 0; pfsi < pracPeriods.length; pfsi++) {
+        if (pracTT[days[pfdi]][pfsi] !== null) continue;
+        pracTT[days[pfdi]][pfsi] = { code:'\u2014', name:'Free', teacher:'', color:'#f8fafc', isFree:true };
+      }
+    }
+  }
+
+  d.tt           = tt;
+  d.pracTT       = pracTT;
+  d.lecPeriods   = lecPeriods;
+  d.pracPeriods  = pracPeriods;
+  d.hasPracticals = hasPracticals;
+  d.slots        = { lec: lecSlots, prac: pracSlots };
+  d.unifiedSlots = buildUnifiedSlots(hasPracticals && pracPeriods.length > 0);
+}
+
+/* ===================================================
+   GENERATE ALL
+   =================================================== */
+function generateAll() {
+  collectGlobalTiming();
+  if (!G.days.length) { toast('Please select at least one working day.'); return; }
+  for (var i = 0; i < DEPTS.length; i++) {
+    if (!DEPTS[i].subjects || document.getElementById('d' + i + '_subjTbody') === null) continue;
+    generateForDept(i);
+  }
+  buildPreviewTabs();
+  buildPreviewPanels();
+  goPage(3);
+  toast('All ' + DEPTS.length + ' timetable(s) generated!');
+}
+
+/* ===================================================
+   PREVIEW TABS & PANELS
+   =================================================== */
+function buildPreviewTabs() {
+  var tabs = document.getElementById('previewTabs');
+  tabs.innerHTML = '';
+  for (var i = 0; i < DEPTS.length; i++) {
+    var d = DEPTS[i];
+    var label = d.inst.cls || d.inst.dept || ('Dept ' + (i+1));
+    var tab = document.createElement('div');
+    tab.className = 'dept-tab' + (i === 0 ? ' active' : '');
+    tab.dataset.idx = i;
+    tab.textContent = '\uD83C\uDFDB ' + label;
+    tab.addEventListener('click', function() {
+      activePreviewIdx = parseInt(this.dataset.idx);
+      document.querySelectorAll('#previewTabs .dept-tab').forEach(function(t, ti) { t.classList.toggle('active', ti === activePreviewIdx); });
+      document.querySelectorAll('#previewPanels .dept-panel').forEach(function(p, pi) { p.classList.toggle('active', pi === activePreviewIdx); });
+    });
+    tabs.appendChild(tab);
+  }
+  activePreviewIdx = 0;
+}
+
+function buildPreviewPanels() {
+  var panels = document.getElementById('previewPanels');
+  panels.innerHTML = '';
+  for (var i = 0; i < DEPTS.length; i++) {
+    var panel = document.createElement('div');
+    panel.className = 'dept-panel' + (i === 0 ? ' active' : '');
+    panel.id = 'previewPanel_' + i;
+    var tableId = 'ttTable_' + i;
+    panel.innerHTML = '<div class="tt-preview-wrap"><div class="tt-preview-inner"><table class="tt-table" id="' + tableId + '"></table></div></div>';
+    panels.appendChild(panel);
+    renderTT(i, tableId);
+  }
+}
+
+/* ===================================================
+   RENDER UNIFIED TIMETABLE HTML
+   =================================================== */
+function renderTT(idx, tableId) {
+  var d    = DEPTS[idx];
+  var inst = d.inst;
+  var days = G.days;
+  var tt   = d.tt;
+  var pracTT = d.pracTT;
+  var lecPeriods  = d.lecPeriods  || [];
+  var pracPeriods = d.pracPeriods || [];
+  var unifiedSlots = d.unifiedSlots || [];
+  var colSpanAll = days.length + 2;
+  var html = '';
+
+  /* Header rows */
+  html += '<tr class="tt-inst-row"><td colspan="' + colSpanAll + '">' + (inst.name || 'Institution') + '</td></tr>';
+  html += '<tr class="tt-dept-row"><td colspan="' + colSpanAll + '">Department of ' + (inst.dept || '') + ' &nbsp;|&nbsp; ' + (inst.sem || '') + ' &nbsp;(' + (inst.year || '') + ')</td></tr>';
+  html += '<tr class="tt-info-row">' +
+    '<td colspan="2" style="text-align:left;font-weight:700;color:#1e3a5f;">Class: ' + (inst.cls || '') + '</td>' +
+    '<td colspan="' + Math.max(1, days.length - 2) + '" style="font-weight:800;font-size:0.82rem;color:#1e3a5f;">Class Time Table</td>' +
+    '<td colspan="1" style="color:#374151;">W.E.F. ' + (inst.wef || '') + '</td>' +
+    '<td colspan="1" style="background:#1e3a5f;color:white;font-weight:700;font-size:0.72rem;white-space:nowrap;">Class Room No.:<br>' + (inst.room || '') + '</td>' +
+    '</tr>';
+
+  var lecPidx = 0;
+  var pracPidx = 0;
+  var lecHeaderDrawn = false;
+
+  for (var ui = 0; ui < unifiedSlots.length; ui++) {
+    var slot = unifiedSlots[ui];
+
+    /* ---- PRACTICAL BLOCK ---- */
+    if (slot.type === 'prac-block') {
+      /* Practical section header + col headers */
+      html += '<tr class="tt-section-row" style="background:#f0fdf4 !important;color:#166534;border-top:3px solid #16a34a !important;">' +
+        '<td colspan="' + colSpanAll + '">&#128300; PRACTICALS &nbsp;&mdash;&nbsp; ' + fmtT(G.pracTiming.start) + ' to ' + fmtT(G.pracTiming.end) + ' &nbsp;(' + G.pracTiming.dur + ' min/session)</td></tr>';
+      html += '<tr class="tt-head-row"><th class="tt-num-col">Sr.</th><th>Time</th>';
+      for (var dih = 0; dih < days.length; dih++) html += '<th>' + days[dih].slice(0,3).toUpperCase() + '</th>';
+      html += '</tr>';
+
+      var ps = slot.pracSlots || [];
+      pracPidx = 0;
+      for (var psi3 = 0; psi3 < ps.length; psi3++) {
+        var pslot = ps[psi3];
+        if (pslot.type === 'break') {
+          html += '<tr class="tt-break-row"><td colspan="' + colSpanAll + '" style="background:' + (pslot.color || '#fef3c7') + ' !important;">' + pslot.name + ' &nbsp;&middot;&nbsp; ' + fmtSlot(pslot.start, pslot.end) + '</td></tr>';
+        } else {
+          html += '<tr><td class="tt-num-col">' + pslot.num + '</td><td class="tt-time-col">' + fmtSlot(pslot.start, pslot.end) + '</td>';
+          for (var pdi4 = 0; pdi4 < days.length; pdi4++) {
+            var pcell = pracTT && pracTT[days[pdi4]] && pracTT[days[pdi4]][pracPidx];
+            html += renderCell(pcell);
+          }
+          html += '</tr>';
+          pracPidx++;
+        }
+      }
+
+      /* Lecture resumed header */
+      var hasAfterLec = false;
+      for (var ui2 = ui + 1; ui2 < unifiedSlots.length; ui2++) {
+        if (unifiedSlots[ui2].type === 'period') { hasAfterLec = true; break; }
+      }
+      if (hasAfterLec) {
+        html += '<tr class="tt-section-row"><td colspan="' + colSpanAll + '">&#128218; LECTURES (continued) &nbsp;&mdash;&nbsp; ' + fmtT(G.lecTiming.start) + ' to ' + fmtT(G.lecTiming.end) + '</td></tr>';
+        html += '<tr class="tt-head-row"><th class="tt-num-col">Sr.</th><th>Time</th>';
+        for (var dih2 = 0; dih2 < days.length; dih2++) html += '<th>' + days[dih2].slice(0,3).toUpperCase() + '</th>';
+        html += '</tr>';
+      }
+      continue;
+    }
+
+    /* ---- BREAK ROW ---- */
+    if (slot.type === 'break') {
+      html += '<tr class="tt-break-row"><td colspan="' + colSpanAll + '" style="background:' + (slot.color || '#fef3c7') + ' !important;">' + slot.name + ' &nbsp;&middot;&nbsp; ' + fmtSlot(slot.start, slot.end) + '</td></tr>';
+      continue;
+    }
+
+    /* ---- LECTURE PERIOD ROW ---- */
+    if (slot.type === 'period' && slot.section === 'lec') {
+      /* Draw lecture section header the first time */
+      if (!lecHeaderDrawn) {
+        html += '<tr class="tt-section-row"><td colspan="' + colSpanAll + '">&#128218; LECTURES &nbsp;&mdash;&nbsp; ' + fmtT(G.lecTiming.start) + ' to ' + fmtT(G.lecTiming.end) + ' &nbsp;(' + G.lecTiming.dur + ' min/period)</td></tr>';
+        html += '<tr class="tt-head-row"><th class="tt-num-col">Sr.</th><th>Time</th>';
+        for (var dih3 = 0; dih3 < days.length; dih3++) html += '<th>' + days[dih3].slice(0,3).toUpperCase() + '</th>';
+        html += '</tr>';
+        lecHeaderDrawn = true;
+      }
+
+      /* Find the matching index in lecPeriods by start time */
+      var lecSlotIdx = -1;
+      for (var lsi = 0; lsi < lecPeriods.length; lsi++) {
+        if (lecPeriods[lsi].start === slot.start) { lecSlotIdx = lsi; break; }
+      }
+      var si = lecSlotIdx >= 0 ? lecSlotIdx : lecPidx;
+
+      html += '<tr><td class="tt-num-col">' + slot.num + '</td><td class="tt-time-col">' + fmtSlot(slot.start, slot.end) + '</td>';
+      for (var di2 = 0; di2 < days.length; di2++) {
+        var cell = tt && tt[days[di2]] && tt[days[di2]][si];
+        html += renderCell(cell);
+      }
+      html += '</tr>';
+      lecPidx++;
+    }
+  }
+
+  /* Teaching Staff */
+  var allStaff = [];
+  for (var sj3 = 0; sj3 < d.subjects.length; sj3++)   allStaff.push({ code:d.subjects[sj3].code + ' (TH)', name:d.subjects[sj3].teacher });
+  for (var pj3 = 0; pj3 < d.practicals.length; pj3++) allStaff.push({ code:d.practicals[pj3].code + ' (PR)', name:d.practicals[pj3].teacher });
+  if (allStaff.length) {
+    html += '<tr class="tt-staff-header"><td colspan="' + colSpanAll + '">Teaching Staff</td></tr>';
+    var half = Math.ceil(allStaff.length / 2);
+    var left = allStaff.slice(0, half), right = allStaff.slice(half);
+    for (var ri = 0; ri < left.length; ri++) {
+      var st = left[ri], rt = right[ri];
+      html += '<tr class="tt-staff-row"><td class="tt-num-col">' + (ri + 1) + '</td>' +
+        '<td style="font-weight:700;color:#2563eb;">' + st.code + '</td>' +
+        '<td colspan="2" style="color:#374151;">' + (st.name || '&mdash;') + '</td>';
+      if (rt) {
+        html += '<td style="font-weight:700;color:#2563eb;padding-left:12px;">' + rt.code + '</td><td colspan="' + Math.max(1, days.length - 2) + '" style="color:#374151;">' + (rt.name || '&mdash;') + '</td>';
+      } else {
+        html += '<td colspan="' + (days.length - 1) + '"></td>';
+      }
+      html += '</tr>';
+    }
+  }
+
+  document.getElementById(tableId).innerHTML = html;
+}
+
+function renderCell(cell) {
+  if (!cell) return '<td><div class="cell-inner"><span class="cell-free">&mdash;</span></div></td>';
+  if (cell.isPracTime) return '<td style="background:#f0fdf4;border:1px dashed #86efac;"><div class="cell-inner"><span style="color:#15803d;font-size:0.65rem;font-style:italic;">&#128300; Practical Time</span></div></td>';
+  if (cell.isZero)  return '<td style="background:#f1f5f9;color:#94a3b8;font-size:0.7rem;text-align:center;padding:4px;font-style:italic;">Zero Hour</td>';
+  if (cell.isFixed) return '<td style="background:#f0fdf4;"><div class="cell-inner"><div class="cell-main" style="color:#166534;">' + cell.code + '</div></div></td>';
+  if (cell.isFree)  return '<td style="background:#f8fafc;"><div class="cell-inner"><span class="cell-free">&mdash;</span></div></td>';
+
+  var bg = hexAlpha(cell.color || '#dbeafe', 0.35);
+  var bd = hexAlpha(cell.color || '#dbeafe', 0.7);
+  var inner = '';
+
+  if (cell.isPrac) {
+    if (cell.isMultiPrac && cell.parallelPracs) {
+      for (var pi4 = 0; pi4 < cell.parallelPracs.length; pi4++) {
+        var p = cell.parallelPracs[pi4];
+        if (pi4 > 0) inner += '<hr style="border:none;border-top:1px dashed #94a3b8;margin:2px 0;">';
+        var grps = p.groups || [];
+        for (var gi4 = 0; gi4 < grps.length; gi4++) {
+          inner += '<div class="cell-sub" style="font-weight:700;font-size:0.68rem;color:#1e3a5f;">' + p.code.replace(' (PR)', '') + ' (PR) &ndash; ' + grps[gi4] + '</div>';
+        }
+      }
+    } else {
+      inner += '<div class="cell-main" style="color:#1e3a5f;">' + cell.code + '</div>';
+      var grps2 = cell.groups || [];
+      for (var gi5 = 0; gi5 < grps2.length; gi5++) {
+        inner += '<div class="cell-sub">' + cell.code.replace(' (PR)', '') + ' (PR) &ndash; ' + grps2[gi5] + '</div>';
+      }
+    }
+  } else {
+    inner = '<div class="cell-main">' + (cell.code || cell.name) + '</div>' +
+            (cell.teacher ? '<div class="cell-sub">' + cell.teacher + '</div>' : '');
+  }
+  return '<td style="background:' + bg + ';border-left:3px solid ' + bd + ';"><div class="cell-inner">' + inner + '</div></td>';
+}
+
+/* ===================================================
+   PDF DOWNLOAD
+   =================================================== */
+function downloadCurrentPDF() {
+  if (DEPTS.length === 0 || !DEPTS[activePreviewIdx].tt) { toast('No timetable generated yet.'); return; }
+  generatePDFForDept(activePreviewIdx);
+  toast('PDF downloaded!');
+}
+
+function downloadAllPDF() {
+  for (var i = 0; i < DEPTS.length; i++) {
+    if (DEPTS[i].tt) generatePDFForDept(i);
+  }
+  toast('All ' + DEPTS.length + ' PDFs downloaded!');
+}
+
+function generatePDFForDept(idx) {
+  var jsPDF  = window.jspdf.jsPDF;
+  var doc    = new jsPDF({ orientation:'landscape', unit:'mm', format:'a3' });
+  var d      = DEPTS[idx];
+  var inst   = d.inst;
+  var days   = G.days;
+  var tt     = d.tt;
+  var pracTT = d.pracTT;
+  var lecPeriods  = d.lecPeriods  || [];
+  var pracPeriods = d.pracPeriods || [];
+  var unifiedSlots = d.unifiedSlots || [];
+
+  var pageW  = doc.internal.pageSize.getWidth();
+  var margin = 10, srW = 10, timeW = 30;
+  var totalW = pageW - margin * 2;
+  var dayW   = (totalW - srW - timeW) / days.length;
+  var y = margin;
+
+  function hr(hex) {
+    hex = hex.replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map(function(x){return x+x;}).join('');
+    return [parseInt(hex.slice(0,2),16), parseInt(hex.slice(2,4),16), parseInt(hex.slice(4,6),16)];
+  }
+  function lighten(hex, f) {
+    f = f === undefined ? 0.6 : f;
+    var c = hr(hex);
+    return [Math.round(c[0]+(255-c[0])*f), Math.round(c[1]+(255-c[1])*f), Math.round(c[2]+(255-c[2])*f)];
+  }
+  function fillR(x, yy, w, h, rgb) { doc.setFillColor(rgb[0],rgb[1],rgb[2]); doc.rect(x,yy,w,h,'F'); }
+  function strokeR(x, yy, w, h, rgb, lw) { rgb=rgb||[180,180,200]; lw=lw||0.2; doc.setDrawColor(rgb[0],rgb[1],rgb[2]); doc.setLineWidth(lw); doc.rect(x,yy,w,h,'S'); doc.setLineWidth(0.2); }
+  function drawT(text, x, yy, opts) {
+    opts=opts||{}; doc.setFontSize(opts.size||7.5); doc.setFont('helvetica', opts.bold?'bold':'normal');
+    if (opts.color) doc.setTextColor(opts.color[0],opts.color[1],opts.color[2]); else doc.setTextColor(30,30,30);
+    doc.text(String(text||''), x, yy, {align:opts.align||'left', maxWidth:opts.maxW});
+    doc.setTextColor(30,30,30);
+  }
+  function drawDayHeaders() {
+    fillR(margin,y,totalW,rh,[30,58,95]);
+    drawT('Sr.',  margin+srW/2,       y+6.5, {bold:true,size:7,color:[255,255,255],align:'center'});
+    drawT('Time', margin+srW+timeW/2, y+6.5, {bold:true,size:7,color:[255,255,255],align:'center'});
+    for (var di=0;di<days.length;di++) {
+      drawT(days[di].slice(0,3).toUpperCase(), margin+srW+timeW+di*dayW+dayW/2, y+6.5, {bold:true,size:7.5,color:[255,255,255],align:'center'});
+    }
+    y+=rh;
+  }
+  function drawSectionLabel(label, color) {
+    fillR(margin,y,totalW,rh*0.85,color); strokeR(margin,y,totalW,rh*0.85,[180,180,200]);
+    drawT(label, pageW/2, y+5.5, {bold:true,size:8,color:[255,255,255],align:'center'}); y+=rh*0.85;
+  }
+
+  var rh = 10;
+
+  /* Institution header */
+  fillR(margin,y,totalW,rh,[30,58,95]); drawT(inst.name||'Institution', pageW/2, y+6.5, {bold:true,size:10,color:[255,255,255],align:'center'}); y+=rh;
+  fillR(margin,y,totalW,rh*0.85,[37,99,235]); drawT('Dept of '+(inst.dept||'')+' | '+(inst.sem||'')+' ('+inst.year+')', pageW/2, y+5.5, {bold:true,size:8,color:[255,255,255],align:'center'}); y+=rh*0.85;
+  var ih=8; fillR(margin,y,totalW,ih,[224,231,255]); strokeR(margin,y,totalW,ih,[99,102,241],0.5);
+  drawT('Class: '+(inst.cls||''), margin+2, y+5, {size:7.5,bold:true,color:[30,58,95]});
+  drawT('Class Time Table', pageW/2, y+5, {size:9,bold:true,color:[30,58,95],align:'center'});
+  drawT('W.E.F. '+(inst.wef||''), pageW-80, y+5, {size:7.5,color:[55,65,81]});
+  fillR(pageW-margin-38,y+0.8,36,ih-1.6,[30,58,95]); drawT(inst.room||'', pageW-margin-20, y+5.2, {size:6.5,bold:true,color:[255,255,255],align:'center'});
+  y+=ih;
+
+  var lecPidxPDF = 0;
+  var lecHeaderDrawnPDF = false;
+
+  for (var ui = 0; ui < unifiedSlots.length; ui++) {
+    var slot = unifiedSlots[ui];
+
+    if (slot.type === 'prac-block') {
+      drawSectionLabel('PRACTICALS   ' + fmtT(G.pracTiming.start) + ' \u2013 ' + fmtT(G.pracTiming.end) + '   (' + G.pracTiming.dur + ' min/session)', [5,95,60]);
+      drawDayHeaders();
+      var ps = slot.pracSlots || [];
+      var ppidxPDF = 0;
+      for (var psi = 0; psi < ps.length; psi++) {
+        var pslot = ps[psi];
+        if (pslot.type === 'break') {
+          var bc = hr(pslot.color || '#fef3c7');
+          fillR(margin,y,totalW,rh*0.8,bc);
+          doc.setDrawColor(200,160,60); doc.setLineWidth(0.5);
+          doc.line(margin,y,margin+totalW,y); doc.line(margin,y+rh*0.8,margin+totalW,y+rh*0.8); doc.setLineWidth(0.2);
+          drawT(pslot.name+' \u00B7 '+fmtSlot(pslot.start,pslot.end), pageW/2, y+5, {bold:true,size:8,color:[100,60,0],align:'center'});
+          y+=rh*0.8;
+        } else {
+          var cellH = rh*1.35;
+          fillR(margin,y,srW,cellH,[248,250,252]); strokeR(margin,y,srW,cellH);
+          drawT(String(pslot.num), margin+srW/2, y+cellH/2+2, {bold:true,size:7,align:'center'});
+          fillR(margin+srW,y,timeW,cellH,[241,245,249]); strokeR(margin+srW,y,timeW,cellH);
+          drawT(fmtSlot(pslot.start,pslot.end), margin+srW+timeW/2, y+cellH/2+1.5, {size:5.5,align:'center'});
+          for (var di2=0;di2<days.length;di2++) {
+            var cx=margin+srW+timeW+di2*dayW;
+            var pcell=pracTT&&pracTT[days[di2]]&&pracTT[days[di2]][ppidxPDF];
+            drawPDFCell(pcell,cx,y,dayW,cellH,hr,lighten,fillR,strokeR,drawT,doc);
+          }
+          y+=cellH; ppidxPDF++;
+        }
+      }
+      var hasAfterLec2 = false;
+      for (var ui2b = ui+1; ui2b < unifiedSlots.length; ui2b++) {
+        if (unifiedSlots[ui2b].type === 'period') { hasAfterLec2 = true; break; }
+      }
+      if (hasAfterLec2) {
+        y += 2;
+        drawSectionLabel('LECTURES (continued)   ' + fmtT(G.lecTiming.start) + ' \u2013 ' + fmtT(G.lecTiming.end), [30,58,95]);
+        drawDayHeaders();
+      }
+      continue;
+    }
+
+    if (slot.type === 'break') {
+      var bc2 = hr(slot.color || '#fef3c7');
+      fillR(margin,y,totalW,rh*0.8,bc2);
+      doc.setDrawColor(200,160,60); doc.setLineWidth(0.5);
+      doc.line(margin,y,margin+totalW,y); doc.line(margin,y+rh*0.8,margin+totalW,y+rh*0.8); doc.setLineWidth(0.2);
+      drawT(slot.name+' \u00B7 '+fmtSlot(slot.start,slot.end), pageW/2, y+5, {bold:true,size:8,color:[100,60,0],align:'center'});
+      y+=rh*0.8;
+      continue;
+    }
+
+    if (slot.type === 'period' && slot.section === 'lec') {
+      if (!lecHeaderDrawnPDF) {
+        drawSectionLabel('LECTURES   ' + fmtT(G.lecTiming.start) + ' \u2013 ' + fmtT(G.lecTiming.end) + '   (' + G.lecTiming.dur + ' min/period)', [30,58,95]);
+        drawDayHeaders();
+        lecHeaderDrawnPDF = true;
+      }
+      var lsiPDF = -1;
+      for (var lsp = 0; lsp < lecPeriods.length; lsp++) {
+        if (lecPeriods[lsp].start === slot.start) { lsiPDF = lsp; break; }
+      }
+      var si = lsiPDF >= 0 ? lsiPDF : lecPidxPDF;
+      var cellH2 = rh*1.35;
+      fillR(margin,y,srW,cellH2,[248,250,252]); strokeR(margin,y,srW,cellH2);
+      drawT(String(slot.num), margin+srW/2, y+cellH2/2+2, {bold:true,size:7,align:'center'});
+      fillR(margin+srW,y,timeW,cellH2,[241,245,249]); strokeR(margin+srW,y,timeW,cellH2);
+      drawT(fmtSlot(slot.start,slot.end), margin+srW+timeW/2, y+cellH2/2+1.5, {size:5.5,align:'center'});
+      for (var di3=0;di3<days.length;di3++) {
+        var cx2=margin+srW+timeW+di3*dayW;
+        var lcell=tt&&tt[days[di3]]&&tt[days[di3]][si];
+        drawPDFCell(lcell,cx2,y,dayW,cellH2,hr,lighten,fillR,strokeR,drawT,doc);
+      }
+      y+=cellH2; lecPidxPDF++;
+    }
+  }
+
+  /* Staff table */
+  var allStaff = [];
+  for (var sj4=0;sj4<d.subjects.length;sj4++) allStaff.push({code:d.subjects[sj4].code+' (TH)',name:d.subjects[sj4].teacher});
+  for (var pj4=0;pj4<d.practicals.length;pj4++) allStaff.push({code:d.practicals[pj4].code+' (PR)',name:d.practicals[pj4].teacher});
+  if (allStaff.length) {
+    y+=2; fillR(margin,y,totalW,rh,[30,58,95]); drawT('Teaching Staff',margin+3,y+6.5,{bold:true,size:8,color:[255,255,255]}); y+=rh;
+    var half2=Math.ceil(allStaff.length/2), left2=allStaff.slice(0,half2), right2=allStaff.slice(half2);
+    var hw=totalW/2;
+    for (var ri2=0;ri2<left2.length;ri2++) {
+      var st2=left2[ri2],rt2=right2[ri2];
+      var bg3=ri2%2===0?[255,255,255]:[248,250,252];
+      fillR(margin,y,totalW,rh*0.85,bg3); strokeR(margin,y,totalW,rh*0.85,[210,215,225]);
+      drawT(String(ri2+1),margin+4,y+5.5,{size:7,bold:true});
+      drawT(st2.code,margin+10,y+5.5,{size:7,bold:true,color:[37,99,235]});
+      drawT(st2.name||'\u2014',margin+hw*0.18,y+5.5,{size:7});
+      if (rt2){drawT(rt2.code,margin+hw+4,y+5.5,{size:7,bold:true,color:[37,99,235]});drawT(rt2.name||'\u2014',margin+hw+hw*0.25,y+5.5,{size:7});}
+      y+=rh*0.85;
+    }
+  }
+
+  var filename = ((inst.cls||inst.dept||'Timetable').replace(/[^a-z0-9]/gi,'_'))+'_Timetable.pdf';
+  doc.save(filename);
+}
+
+function drawPDFCell(cell, cx, y, dayW, cellH, hr, lighten, fillR, strokeR, drawT, doc) {
+  if (!cell || cell.isPracTime) {
+    fillR(cx,y,dayW,cellH,[240,253,244]); strokeR(cx,y,dayW,cellH,[180,220,180]);
+    if (cell && cell.isPracTime) drawT('Prac.Time', cx+dayW/2, y+cellH/2+2, {size:5,color:[100,180,100],align:'center'});
+    else drawT('\u2014', cx+dayW/2, y+cellH/2+2, {size:6,color:[200,200,200],align:'center'});
+  } else if (cell.isZero) {
+    fillR(cx,y,dayW,cellH,[248,250,252]); strokeR(cx,y,dayW,cellH);
+    drawT('Zero Hour', cx+dayW/2, y+cellH/2+2, {size:5.5,color:[148,163,184],align:'center'});
+  } else if (cell.isFixed) {
+    fillR(cx,y,dayW,cellH,[240,253,244]); strokeR(cx,y,dayW,cellH);
+    drawT(cell.code, cx+dayW/2, y+cellH/2+2, {bold:true,size:7,color:[22,101,52],align:'center'});
+  } else if (cell.isFree) {
+    fillR(cx,y,dayW,cellH,[248,250,252]); strokeR(cx,y,dayW,cellH);
+    drawT('\u2014', cx+dayW/2, y+cellH/2+2, {size:6,color:[200,200,200],align:'center'});
+  } else {
+    var bg2=lighten(cell.color||'#dbeafe');
+    var bd2=hr(cell.color||'#dbeafe');
+    fillR(cx,y,dayW,cellH,bg2);
+    doc.setDrawColor(bd2[0],bd2[1],bd2[2]); doc.setLineWidth(0.7);
+    doc.line(cx,y,cx,y+cellH); doc.setLineWidth(0.2); strokeR(cx,y,dayW,cellH);
+    if (cell.isPrac && cell.isMultiPrac && cell.parallelPracs) {
+      var lineY=y+2;
+      for (var pi5=0;pi5<cell.parallelPracs.length;pi5++) {
+        var pp=cell.parallelPracs[pi5];
+        if (pi5>0){doc.setDrawColor(160,160,190);doc.setLineWidth(0.2);doc.line(cx+2,lineY-0.5,cx+dayW-2,lineY-0.5);}
+        var pgrps=pp.groups||[];
+        for (var gi6=0;gi6<pgrps.length;gi6++){drawT(pp.code.replace(' (PR)','')+' \u2013 '+pgrps[gi6],cx+dayW/2,lineY+2.5,{size:4.5,color:[20,40,80],align:'center'});lineY+=3.5;}
+      }
+    } else if (cell.isPrac) {
+      drawT(cell.code, cx+dayW/2, y+cellH/2, {bold:true,size:7,color:[20,40,80],align:'center'});
+      var grps3=cell.groups||[];
+      for (var gi7=0;gi7<grps3.length;gi7++) drawT(cell.code.replace(' (PR)','')+' \u2013 '+grps3[gi7],cx+dayW/2,y+cellH/2+3+gi7*3,{size:4.5,color:[60,80,120],align:'center'});
+    } else {
+      drawT(cell.code||cell.name||'', cx+dayW/2, y+cellH/2, {bold:true,size:7,color:[20,40,80],align:'center'});
+      if (cell.teacher) drawT(cell.teacher.split(' ').slice(-1)[0], cx+dayW/2, y+cellH/2+3.5, {size:5,color:[60,80,120],align:'center'});
+    }
+  }
+}
+</script>
+</body>
+</html>
